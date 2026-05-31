@@ -1,0 +1,5 @@
+*.xpi
+.DS_Store
+__MACOSX/
+*.log
+node_modules/

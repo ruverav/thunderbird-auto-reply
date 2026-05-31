@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "name": "Auto Reply AI",
+  "version": "1.0.0",
+  "description": "Generate email draft replies using any OpenAI-compatible API",
+  "author": "Auto Reply AI",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "auto-reply-ai@rubenverdute.dev",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": [
+    "accountsRead",
+    "messagesRead",
+    "compose",
+    "storage",
+    "<all_urls>"
+  ],
+  "message_display_action": {
+    "default_title": "Auto Reply AI",
+    "default_popup": "popup/popup.html",
+    "default_icon": "icons/icon.svg"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "icons": {
+    "32": "icons/icon.svg"
+  }
+}
