@@ -15,8 +15,15 @@
     "messagesRead",
     "compose",
     "storage",
+    "tabs",
     "<all_urls>"
   ],
+  "compose_action": {
+    "default_title": "Auto Reply AI",
+    "default_popup": "compose/compose.html",
+    "default_icon": "icons/icon.svg"
+  },
+
   "message_display_action": {
     "default_title": "Auto Reply AI",
     "default_popup": "popup/popup.html",

@@ -9,7 +9,7 @@ function setStatus(msg, type) {
 
 generateBtn.addEventListener("click", async () => {
   generateBtn.disabled = true;
-  setStatus("Generating draft...", "loading");
+  setStatus("⏳ Generating draft...", "loading");
 
   try {
     const messages = await messenger.messageDisplay.getDisplayedMessages();
@@ -22,18 +22,26 @@ generateBtn.addEventListener("click", async () => {
     const messageId = messages[0].id;
     const instructions = instructionsEl.value.trim();
 
-    messenger.runtime.sendMessage({
+    // Send to background and wait for completion.
+    // If the popup closes, the background continues anyway.
+    const response = await messenger.runtime.sendMessage({
       action: "generateDraft",
       messageId,
       instructions,
     });
 
-    setStatus("Draft generation started. Check compose window.", "success");
-  } catch (err) {
-    setStatus(`Error: ${err.message}`, "error");
-  }
+    if (response && response.error) {
+      setStatus(`Error: ${response.error}`, "error");
+      generateBtn.disabled = false;
+      return;
+    }
 
-  generateBtn.disabled = false;
+    setStatus("✅ Draft ready! Check compose window.", "success");
+  } catch (err) {
+    console.error("Auto Reply AI: Reply error:", err);
+    setStatus(`Error: ${err.message}`, "error");
+    generateBtn.disabled = false;
+  }
 });
 
 document.getElementById("openOptions").addEventListener("click", (e) => {
