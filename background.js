@@ -16,6 +16,64 @@ async function getComposeSystemPrompt() {
   );
 }
 
+/**
+ * Convert AI plain text to safe HTML with basic formatting support.
+ * Handles line endings (\\r\\n, \\r, \\n), markdown formatting,
+ * and escapes HTML special characters.
+ */
+function textToHtml(text) {
+  // 1. Normalize line endings
+  let html = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  // 2. Extract markdown links and replace with placeholders.
+  //    This protects the URL from HTML escaping while keeping it intact.
+  const links = [];
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+    const idx = links.length;
+    links.push({ text: linkText, url });
+    return `\x00LINK${idx}\x00`;
+  });
+
+  // 3. Escape HTML special characters
+  html = html
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // 4. Restore links as proper HTML anchors
+  for (let i = 0; i < links.length; i++) {
+    const escapedText = links[i].text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const escapedUrl = links[i].url
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    html = html.replace(
+      `\x00LINK${i}\x00`,
+      `<a href="${escapedUrl}">${escapedText}</a>`
+    );
+  }
+
+  // 5. Convert other markdown formatting to HTML tags
+  //    Order: code first (to protect its content), then bold before italic
+  html = html
+    .replace(/`(.+?)`/g, "<code>$1</code>")                // `code`
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")      // **bold**
+    .replace(/__(.+?)__/g, "<strong>$1</strong>")          // __bold__
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")                  // *italic*
+    .replace(/_(.+?)_/g, "<em>$1</em>")                     // _italic_
+    .replace(/~~(.+?)~~/g, "<s>$1</s>");                    // ~~strikethrough~~
+
+  // 6. Convert line breaks to HTML
+  html = html
+    .replace(/\n\n/g, "<br><br>")
+    .replace(/\n/g, "<br>");
+
+  return html;
+}
+
 async function callOpenAI(apiUrl, apiKey, model, systemPrompt, emailSubject, emailBody, senderName, instructions) {
   const userPrompt = instructions
     ? `Generate a reply to the following email. User instructions: ${instructions}\n\nFrom: ${senderName}\nSubject: ${emailSubject}\n\n${emailBody}`
@@ -166,12 +224,7 @@ async function generateDraftForMessage(message, instructions = "") {
     });
   } else {
     const existingHtml = currentDetails.body || "";
-    const replyHtml = replyText
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\n\n/g, "<br><br>")
-      .replace(/\n/g, "<br>");
+    const replyHtml = textToHtml(replyText);
 
     const bodyMatch = existingHtml.match(/<body[^>]*>/i);
     if (bodyMatch) {
@@ -282,12 +335,7 @@ async function generateAndUpdateCompose(msg) {
           if (bodyOpenMatch) {
             const bodyOpenEnd = bodyOpenMatch.index + bodyOpenMatch[0].length;
 
-            const replyHtml = generatedText
-              .replace(/&/g, "&amp;")
-              .replace(/</g, "&lt;")
-              .replace(/>/g, "&gt;")
-              .replace(/\n\n/g, "<br><br>")
-              .replace(/\n/g, "<br>");
+            const replyHtml = textToHtml(generatedText);
 
             const newHtml =
               existingHtml.substring(0, bodyOpenEnd) +
@@ -312,12 +360,7 @@ async function generateAndUpdateCompose(msg) {
         const bodyMatch = existingHtml.match(/<body[^>]*>/i);
         if (bodyMatch) {
           const insertPos = bodyMatch.index + bodyMatch[0].length;
-          const replyHtml = generatedText
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/\n\n/g, "<br><br>")
-            .replace(/\n/g, "<br>");
+          const replyHtml = textToHtml(generatedText);
 
           const newHtml =
             existingHtml.substring(0, insertPos) +
@@ -334,24 +377,14 @@ async function generateAndUpdateCompose(msg) {
         }
 
         // No <body> either — just set the text directly
-        const replyHtml = generatedText
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/\n\n/g, "<br><br>")
-          .replace(/\n/g, "<br>");
+        const replyHtml = textToHtml(generatedText);
         await messenger.compose.setComposeDetails(tabId, {
           body: replyHtml,
         });
         console.log("Auto Reply AI: Compose window updated (direct)");
       } else {
         // No existing HTML — just set the text
-        const replyHtml = generatedText
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/\n\n/g, "<br><br>")
-          .replace(/\n/g, "<br>");
+        const replyHtml = textToHtml(generatedText);
         await messenger.compose.setComposeDetails(tabId, {
           body: replyHtml,
         });
